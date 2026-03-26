@@ -29,34 +29,46 @@ try {
   console.error("Cleanup error:", e);
 }
 
-// ===== ROOT ROUTE (FOR RENDER HEALTH) =====
+// ===== ROOT ROUTE =====
 app.get("/", (req, res) => {
   res.send("Server is live 🚀");
 });
 
-// ===== WEBHOOK (INCOMING MESSAGES) =====
+// ===== WEBHOOK =====
 app.post("/webhook", async (req, res) => {
   try {
     const msgObj = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!msgObj) return res.sendStatus(200);
 
     const user = msgObj.from;
-    const text = msgObj.text?.body || "";
+    const text = msgObj.text?.body?.trim() || "";
 
     const userData = getUser(user);
     userData.lastUpdated = Date.now();
 
     const { map, phone } = extract(text);
 
-    if (map) userData.loc = map;
-    if (phone) userData.phone = phone;
+    // ✅ FIX: HANDLE LOCATION PROPERLY
+    if (map) {
+      userData.loc = map;
+    } else if (text && !phone && text.length > 5) {
+      // treat text as address
+      userData.loc = text;
+    }
+
+    if (phone) {
+      userData.phone = phone;
+    }
 
     // ===== CONFIRM FLOW =====
     if (userData.confirm) {
       if (text.toLowerCase() === "yes") {
         try {
+          console.log("📍 Resolving address:", userData.loc);
+
           const address = await getAddress(userData.loc);
 
+          console.log("📦 Booking delivery...");
           const delivery = await bookDelivery(
             process.env.PICKUP,
             address,
@@ -70,7 +82,7 @@ app.post("/webhook", async (req, res) => {
             `✅ Booked!\n🚗 ${delivery.courier?.name || "Assigned"}\n🔗 ${delivery.tracking_url}`
           );
         } catch (err) {
-          console.error("Booking error:", err);
+          console.error("❌ Booking error:", err);
           await sendMsg(user, "❌ Booking failed. Try again.");
         }
       } else {
@@ -93,7 +105,7 @@ app.post("/webhook", async (req, res) => {
     }
 
     if (!userData.loc) {
-      await sendMsg(user, "📍 Please send location");
+      await sendMsg(user, "📍 Send location, Google Maps link, or type address");
     } else {
       await sendMsg(user, "📞 Please send phone number");
     }
@@ -105,7 +117,7 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// ===== VERIFY WEBHOOK (META HANDSHAKE) =====
+// ===== VERIFY WEBHOOK =====
 app.get("/webhook", (req, res) => {
   const VERIFY_TOKEN = process.env.VERIFY;
 

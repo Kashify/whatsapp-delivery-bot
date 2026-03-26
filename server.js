@@ -100,3 +100,10 @@ app.get("/webhook", (req, res) => {
     return res.sendStatus(403);
   }
 });
+
+// ✅ ADD THIS BELOW
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

@@ -69,12 +69,14 @@ app.post("/webhook", async (req, res) => {
           const address = await getAddress(userData.loc);
 
           console.log("📦 Booking delivery...");
-          const delivery = await bookDelivery(
-            process.env.PICKUP,
-            address,
-            userData.phone
-          );
+   const pickup = await getAddress(process.env.PICKUP);
+const drop = address;
 
+const delivery = await bookDelivery(
+  pickup,
+  drop,
+  userData.phone
+);
           clearUser(user);
 
           await sendMsg(

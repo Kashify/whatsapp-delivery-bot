@@ -6,12 +6,20 @@ let expiry = 0;
 async function getToken() {
   if (token && Date.now() < expiry) return token;
 
-  const res = await axios.post("https://login.uber.com/oauth/v2/token", {
-    client_id: process.env.UBER_ID,
-    client_secret: process.env.UBER_SECRET,
-    grant_type: "client_credentials",
-    scope: "eats.deliveries"
-  });
+  const res = await axios.post(
+    "https://login.uber.com/oauth/v2/token",
+    new URLSearchParams({
+      client_id: process.env.UBER_CLIENT_ID,
+      client_secret: process.env.UBER_CLIENT_SECRET,
+      grant_type: "client_credentials",
+      scope: "eats.deliveries"
+    }),
+    {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    }
+  );
 
   token = res.data.access_token;
   expiry = Date.now() + res.data.expires_in * 1000;
@@ -25,20 +33,21 @@ async function bookDelivery(pickup, drop, phone) {
   const res = await axios.post(
     "https://api.uber.com/v1/customers/deliveries",
     {
-      pickup: {
-        address: pickup,
-        name: "Sender",
-        phone_number: process.env.SENDER_PHONE
-      },
-      dropoff: {
-        address: drop,
-        name: "Receiver",
-        phone_number: `+91${phone}`
-      }
+      pickup_address: pickup.address,
+      pickup_latitude: pickup.lat,
+      pickup_longitude: pickup.lng,
+
+      dropoff_address: drop.address,
+      dropoff_latitude: drop.lat,
+      dropoff_longitude: drop.lng,
+
+      dropoff_phone_number: phone,
+      manifest: "Parcel"
     },
     {
       headers: {
-        Authorization: `Bearer ${t}`
+        Authorization: `Bearer ${t}`,
+        "Content-Type": "application/json"
       }
     }
   );

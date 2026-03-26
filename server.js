@@ -13,28 +13,19 @@ const { startCleanup } = require("./utils/timeout");
 const app = express();
 app.use(bodyParser.json());
 
-// ===== GLOBAL ERROR HANDLING =====
-process.on("uncaughtException", (err) => {
-  console.error("UNCAUGHT EXCEPTION:", err);
-});
-
-process.on("unhandledRejection", (err) => {
-  console.error("UNHANDLED REJECTION:", err);
-});
-
-// ===== START CLEANUP SAFELY =====
+// cleanup
 try {
   startCleanup();
 } catch (e) {
   console.error("Cleanup error:", e);
 }
 
-// ===== ROOT ROUTE (FOR RENDER HEALTH) =====
+// TEST ROUTE (IMPORTANT)
 app.get("/", (req, res) => {
   res.send("Server is live 🚀");
 });
 
-// ===== WEBHOOK (INCOMING MESSAGES) =====
+// ===== WEBHOOK POST =====
 app.post("/webhook", async (req, res) => {
   try {
     const msgObj = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
@@ -51,7 +42,6 @@ app.post("/webhook", async (req, res) => {
     if (map) userData.loc = map;
     if (phone) userData.phone = phone;
 
-    // ===== CONFIRM FLOW =====
     if (userData.confirm) {
       if (text.toLowerCase() === "yes") {
         try {
@@ -70,7 +60,6 @@ app.post("/webhook", async (req, res) => {
             `✅ Booked!\n🚗 ${delivery.courier?.name || "Assigned"}\n🔗 ${delivery.tracking_url}`
           );
         } catch (err) {
-          console.error("Booking error:", err);
           await sendMsg(user, "❌ Booking failed. Try again.");
         }
       } else {
@@ -81,7 +70,6 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // ===== NORMAL FLOW =====
     if (userData.loc && userData.phone) {
       userData.confirm = true;
 
@@ -100,13 +88,15 @@ app.post("/webhook", async (req, res) => {
 
     res.sendStatus(200);
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error(err);
     res.sendStatus(500);
   }
 });
 
-// ===== VERIFY WEBHOOK (META HANDSHAKE) =====
+// ===== WEBHOOK VERIFY =====
 app.get("/webhook", (req, res) => {
+  console.log("Webhook verification hit");
+
   const VERIFY_TOKEN = process.env.VERIFY;
 
   const mode = req.query["hub.mode"];

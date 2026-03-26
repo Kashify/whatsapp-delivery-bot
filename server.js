@@ -13,9 +13,28 @@ const { startCleanup } = require("./utils/timeout");
 const app = express();
 app.use(bodyParser.json());
 
-startCleanup();
+// ===== GLOBAL ERROR HANDLING =====
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
 
-// ===== WEBHOOK =====
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED REJECTION:", err);
+});
+
+// ===== START CLEANUP SAFELY =====
+try {
+  startCleanup();
+} catch (e) {
+  console.error("Cleanup error:", e);
+}
+
+// ===== ROOT ROUTE (FOR RENDER HEALTH) =====
+app.get("/", (req, res) => {
+  res.send("Server is live 🚀");
+});
+
+// ===== WEBHOOK (INCOMING MESSAGES) =====
 app.post("/webhook", async (req, res) => {
   try {
     const msgObj = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
@@ -51,6 +70,7 @@ app.post("/webhook", async (req, res) => {
             `✅ Booked!\n🚗 ${delivery.courier?.name || "Assigned"}\n🔗 ${delivery.tracking_url}`
           );
         } catch (err) {
+          console.error("Booking error:", err);
           await sendMsg(user, "❌ Booking failed. Try again.");
         }
       } else {
@@ -80,12 +100,12 @@ app.post("/webhook", async (req, res) => {
 
     res.sendStatus(200);
   } catch (err) {
-    console.error(err);
+    console.error("Webhook error:", err);
     res.sendStatus(500);
   }
 });
 
-// ===== VERIFY WEBHOOK =====
+// ===== VERIFY WEBHOOK (META HANDSHAKE) =====
 app.get("/webhook", (req, res) => {
   const VERIFY_TOKEN = process.env.VERIFY;
 
@@ -101,7 +121,7 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-// ✅ ADD THIS BELOW
+// ===== START SERVER =====
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {

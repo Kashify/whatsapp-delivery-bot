@@ -100,8 +100,18 @@ if (userData.loc.includes("maps.app.goo.gl")) {
 
           console.log("📍 Resolving PICKUP location:", process.env.PICKUP);
 
-          const pickup = await getAddress(process.env.PICKUP);
-          console.log("📍 Resolved PICKUP:", pickup);
+let pickup;
+
+if (process.env.PICKUP.includes(",")) {
+  const [lat, lng] = process.env.PICKUP.split(",");
+  pickup = {
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    address: "Pickup Location"
+  };
+} else {
+  pickup = await getAddress(process.env.PICKUP);
+}          console.log("📍 Resolved PICKUP:", pickup);
 
           console.log("🚀 Calling Uber API...");
 

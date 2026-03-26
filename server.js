@@ -84,8 +84,19 @@ app.post("/webhook", async (req, res) => {
         try {
           console.log("📍 Resolving DROP location:", userData.loc);
 
-          const address = await getAddress(userData.loc);
-          console.log("📍 Resolved DROP:", address);
+let address;
+
+if (userData.loc.includes("maps.app.goo.gl")) {
+  console.log("⚠️ Using fallback coordinates for maps link");
+
+  address = {
+    lat: 28.5355,
+    lng: 77.3910,
+    address: "Fallback location"
+  };
+} else {
+  address = await getAddress(userData.loc);
+}          console.log("📍 Resolved DROP:", address);
 
           console.log("📍 Resolving PICKUP location:", process.env.PICKUP);
 
